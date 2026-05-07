@@ -1,0 +1,74 @@
+{
+    "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
+    "theme": "tribe",
+    "active": "ai-workspace",
+    "activateOnStartup": true,
+    "keepExistingTerminals": false,
+    "sessions": {
+        "ai-workspace": [
+            {
+                "name": "server",
+                "icon": "rocket",
+                "color": "terminal.ansiGreen",
+                "autoExecuteCommands": true,
+                "commands": [
+                    "clear"
+                ]
+            },
+            {
+                "name": "frontend",
+                "icon": "browser",
+                "color": "terminal.ansiBlue",
+                "commands": [
+                    "cd frontend",
+                    "npm run dev"
+                ]
+            },
+            {
+                "name": "backend",
+                "icon": "server-process",
+                "color": "terminal.ansiMagenta",
+                "commands": [
+                    "cd backend",
+                    "uvicorn main:app --reload"
+                ]
+            },
+            [
+                {
+                    "name": "docker",
+                    "icon": "container",
+                    "color": "terminal.ansiCyan",
+                    "commands": [
+                        "docker compose up"
+                    ]
+                },
+                {
+                    "name": "git",
+                    "icon": "git-branch",
+                    "color": "terminal.ansiYellow",
+                    "commands": [
+                        "git status"
+                    ]
+                }
+            ],
+            [
+                {
+                    "name": "python",
+                    "icon": "symbol-class",
+                    "color": "terminal.ansiRed",
+                    "commands": [
+                        "source .venv/bin/activate"
+                    ]
+                },
+                {
+                    "name": "database",
+                    "icon": "database",
+                    "color": "terminal.ansiWhite",
+                    "commands": [
+                        ""
+                    ]
+                }
+            ]
+        ]
+    }
+}
