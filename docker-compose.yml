@@ -1,9 +1,10 @@
-version: '3.9'
-
 services:
 
   api:
+
     build: .
+
+    container_name: intervue-api
 
     restart: unless-stopped
 
@@ -30,12 +31,15 @@ services:
 
 
   redis:
+
     image: redis:7-alpine
+
+    container_name: intervue-redis
 
     restart: unless-stopped
 
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
     volumes:
       - redis_data:/data
@@ -44,4 +48,5 @@ services:
 
 
 volumes:
+
   redis_data:

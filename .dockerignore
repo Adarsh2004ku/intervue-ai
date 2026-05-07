@@ -1,6 +1,43 @@
-.venv
-__pycache__
-.pytest_cache
+# Git
 .git
-.env
+.gitignore
+
+# Python cache
+__pycache__
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv
+venv
+
+# Environment files
+.env
+
+# VSCode
+.vscode
+
+# Mac
+.DS_Store
+
+# Testing
+.pytest_cache
+
+# Build artifacts
+build
+dist
+*.egg-info
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints
+
+# Docker
+docker-compose.yml
+
+# Local caches
+.cache
+huggingface

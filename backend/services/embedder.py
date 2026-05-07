@@ -1,18 +1,18 @@
 import json,os,hashlib
 from typing import List
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from supabase import create_client
 from backend.services.cache import cache_get,cache_set
 from dotenv import load_dotenv
 load_dotenv()
-from sentence_transformers import SentenceTransformer
+from google import genai
 
+client = genai.Client()
 
-embedder = SentenceTransformer(
-    'all-MiniLM-L6-v2'
+embedder = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
 )
-
 supabase  = create_client(
     os.getenv('SUPABASE_URL'),
     os.getenv('SUPABASE_SERVICE_KEY')
@@ -41,7 +41,7 @@ async def embed_resume(resume_id : str, raw_text:str)->int:
 
     # Embed all chunks in one batch call (more efficient than one-by-one)
 
-    vectors = embedder.encode(chunks).tolist()
+    vectors = await embedder.aembed_documents(chunks)
     rows = [
         {
             'resume_id' : resume_id,
@@ -88,7 +88,7 @@ async def retrieve_chunks( resume_id : str,query:str,top_k : int = 5)->List[dict
     cached = await cache_get(cache_key)
     if cached:
         return cached
-    query_vector = embedder.encode(query).tolist()
+    query_vector = await embedder.aembed_query(query)
 
     result = supabase.rpc('match_resume_chunks',{
         'resume_id_arg':   resume_id,
