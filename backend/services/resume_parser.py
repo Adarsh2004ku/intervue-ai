@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
-    model = "gemini-1.5-flash",
+    model = "gemini-3-flash-preview",
     temperature=0,
     google_api_key=os.getenv("GOOGLE_API_KEY")
     )
@@ -85,12 +85,42 @@ async def parse_resume(raw_text:str)->dict:
 
 
     #strip markdown fences if present
-    content = response.content.strip()
+    content = response.content
+
+    if isinstance(content, list):
+
+        cleaned_parts = []
+
+        for part in content:
+
+            # Gemini structured dict response
+            if isinstance(part, dict) and "text" in part:
+                cleaned_parts.append(part["text"])
+
+            # object with .text attribute
+            elif hasattr(part, "text"):
+                cleaned_parts.append(part.text)
+
+            else:
+                cleaned_parts.append(str(part))
+
+        content = "".join(cleaned_parts)
+    content = content.strip()
+
     if content.startswith('```'):
-        content = content.split('```')[1]
-        if content.startswith('json'):
-            content = content[4:]
+
+        content = content.replace(
+            '```json',
+            ''
+        ).replace(
+            '```',
+            ''
+        ).strip()
     
+    print("\n=== GEMINI RESPONSE ===")
+    print(content)
+    print("=======================\n")
+
     parsed = json.loads(content)
     await cache_set(cache_key,parsed,ttl = 86400) # 24hours
     return parsed

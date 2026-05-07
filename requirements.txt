@@ -5,7 +5,8 @@ python-multipart
 langgraph
 langchain
 langchain-google-genai
-
+langchain-google-genai
+google-generativeai
 supabase
 
 redis[hiredis]
@@ -18,3 +19,4 @@ python-dotenv
 pydantic
 
 numpy
+sentence-transformers

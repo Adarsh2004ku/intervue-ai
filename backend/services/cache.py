@@ -37,7 +37,7 @@ async def cache_delete(key: str):
     await r.delete(key)
 
 
-def make_key(prefix: str, *args) -> str:
+def cache_key(prefix: str, *args) -> str:
     raw = ':'.join(str(a) for a in args)
     hsh = hashlib.sha256(raw.encode()).hexdigest()[:16]
     return f'{prefix}:{hsh}'
