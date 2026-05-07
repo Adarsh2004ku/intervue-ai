@@ -15,7 +15,7 @@ embedder = GoogleGenerativeAIEmbeddings(
 )
 supabase  = create_client(
     os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_SERVICE_KEY')
+    os.getenv('SUPABASE_KEY')
 )
 
 def chunk_text(text: str,chunk_size= 500,overlap :int = 50 )->List[str]:

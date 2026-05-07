@@ -1,8 +1,19 @@
 from fastapi import Depends, HTTPException, Header
 from supabase import create_client
+from dotenv import load_dotenv
 import os, jwt
 
-supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_KEY'))
+load_dotenv()
+
+_SUPABASE_URL = os.getenv("SUPABASE_URL")
+_SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+if not _SUPABASE_URL or not _SUPABASE_KEY:
+    raise RuntimeError(
+        "Missing Supabase env vars. Set SUPABASE_URL and SUPABASE_KEY "
+        "(for local dev, create a .env file in the repo root)."
+    )
+
+supabase = create_client(_SUPABASE_URL, _SUPABASE_KEY)
 
 async def get_current_user(authorization: str = Header(...)) -> dict:
     try:

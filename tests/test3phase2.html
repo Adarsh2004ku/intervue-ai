@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intervue-AI — Local Dev Test Suite</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #171923;
+    --bg3: #1e2130;
+    --border: #2d3148;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #6c8fff;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --teal: #2dd4bf;
+    --purple: #a78bfa;
+    --mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --sans: 'Segoe UI', system-ui, sans-serif;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+  /* ── layout ── */
+  .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-title { font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--muted); padding: 0 16px 12px; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; color: var(--muted); border-left: 3px solid transparent; font-size: 13px; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,143,255,.08); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .nav-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .nav-dot.err { background: var(--red); }
+  .nav-dot.warn { background: var(--yellow); }
+  .nav-dot.run { background: var(--accent); animation: blink .8s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .main { padding: 28px 32px; overflow-y: auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .topbar h1 { font-size: 20px; font-weight: 600; color: var(--text); }
+  .topbar p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .badge-green { background: rgba(74,222,128,.12); color: var(--green); border: 1px solid rgba(74,222,128,.25); }
+  .badge-red { background: rgba(248,113,113,.12); color: var(--red); border: 1px solid rgba(248,113,113,.25); }
+  .badge-yellow { background: rgba(251,191,36,.12); color: var(--yellow); border: 1px solid rgba(251,191,36,.25); }
+  .badge-blue { background: rgba(108,143,255,.12); color: var(--accent); border: 1px solid rgba(108,143,255,.25); }
+  .badge-teal { background: rgba(45,212,191,.12); color: var(--teal); border: 1px solid rgba(45,212,191,.25); }
+
+  /* ── cards ── */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
+  .card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-head h3 { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 18px; }
+
+  /* ── sections ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── status grid ── */
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── terminal ── */
+  .terminal { background: #080b10; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--mono); font-size: 12px; padding: 14px; max-height: 260px; overflow-y: auto; }
+  .terminal .line { padding: 1.5px 0; line-height: 1.5; }
+  .terminal .line.ok { color: var(--green); }
+  .terminal .line.err { color: var(--red); }
+  .terminal .line.warn { color: var(--yellow); }
+  .terminal .line.info { color: var(--accent); }
+  .terminal .line.dim { color: var(--muted); }
+  .terminal .line.teal { color: var(--teal); }
+  .terminal .ts { color: #3d4663; margin-right: 6px; }
+
+  /* ── form elements ── */
+  input[type="text"], input[type="url"], select, textarea {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 7px 11px; font-size: 13px; font-family: var(--sans);
+    width: 100%; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 72px; font-family: var(--mono); font-size: 12px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+  .field { margin-bottom: 12px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-green { background: rgba(74,222,128,.18); color: var(--green); border: 1px solid rgba(74,222,128,.3); }
+  .btn-red { background: rgba(248,113,113,.18); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+  /* ── mic ── */
+  .mic-orb { width: 60px; height: 60px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; transition: all .2s; flex-shrink: 0; }
+  .mic-orb.live { border-color: var(--red); background: rgba(248,113,113,.1); box-shadow: 0 0 20px rgba(248,113,113,.3); animation: pulse-ring 1.2s ease-in-out infinite; }
+  @keyframes pulse-ring { 0%,100%{box-shadow:0 0 10px rgba(248,113,113,.2)} 50%{box-shadow:0 0 28px rgba(248,113,113,.5)} }
+  .mic-row { display: flex; align-items: flex-start; gap: 16px; }
+  .mic-transcript { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 14px; min-height: 72px; line-height: 1.7; color: var(--text); }
+  .mic-transcript .placeholder { color: var(--muted); font-style: italic; }
+
+  /* ── response ── */
+  .response-area { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-size: 14px; line-height: 1.8; min-height: 100px; max-height: 340px; overflow-y: auto; white-space: pre-wrap; color: var(--text); }
+
+  /* ── db table ── */
+  .db-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+  .db-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); }
+  .db-table td { padding: 7px 12px; border-bottom: 1px solid rgba(45,49,72,.5); color: var(--text); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .db-table tr:hover td { background: var(--bg3); }
+  .db-table .null { color: var(--muted); font-style: italic; }
+  .db-empty { text-align: center; padding: 32px; color: var(--muted); font-style: italic; font-family: var(--sans); font-size: 13px; }
+
+  /* ── check items ── */
+  .check-list { display: flex; flex-direction: column; gap: 6px; }
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--bg3); border-radius: 6px; border: 1px solid var(--border); }
+  .check-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+  .check-label { flex: 1; font-size: 13px; color: var(--text); }
+  .check-detail { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── tabs ── */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab { padding: 8px 16px; font-size: 13px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── waveform canvas ── */
+  #waveCanvas { width: 100%; height: 48px; border-radius: 6px; background: var(--bg3); display: block; }
+
+  /* ── tag ── */
+  .tag { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); }
+
+  /* ── divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Intervue-AI Tests</div>
+    <div class="nav-item active" onclick="nav('overview',this)">
+      <span class="nav-dot" id="dot-overview"></span> Overview
+    </div>
+    <div class="nav-item" onclick="nav('health',this)">
+      <span class="nav-dot" id="dot-health"></span> Health checks
+    </div>
+    <div class="nav-item" onclick="nav('speech',this)">
+      <span class="nav-dot" id="dot-speech"></span> Mic + Speech
+    </div>
+    <div class="nav-item" onclick="nav('llm',this)">
+      <span class="nav-dot" id="dot-llm"></span> LLM pipeline
+    </div>
+    <div class="nav-item" onclick="nav('database',this)">
+      <span class="nav-dot" id="dot-database"></span> Database (Supabase)
+    </div>
+    <div class="nav-item" onclick="nav('redis',this)">
+      <span class="nav-dot" id="dot-redis"></span> Redis cache
+    </div>
+    <div class="nav-item" onclick="nav('langgraph',this)">
+      <span class="nav-dot" id="dot-langgraph"></span> LangGraph agent
+    </div>
+    <div class="nav-item" onclick="nav('metrics',this)">
+      <span class="nav-dot" id="dot-metrics"></span> Prometheus metrics
+    </div>
+    <div style="border-top:1px solid var(--border);margin:12px 0"></div>
+    <div class="nav-item" onclick="runAll()">
+      <span style="color:var(--accent)">▶</span> Run all tests
+    </div>
+    <div class="nav-item" onclick="exportLog()">
+      <span style="color:var(--muted)">↓</span> Export log
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- config bar always visible -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-body" style="padding:14px 18px">
+        <div class="row3">
+          <div class="field" style="margin:0">
+            <label>Backend URL</label>
+            <input type="url" id="cfgBackend" value="http://localhost:8000" />
+          </div>
+          <div class="field" style="margin:0">
+            <label>LLM provider</label>
+            <select id="cfgProvider">
+              <option value="gemini">Gemini (langchain-google-genai)</option>
+              <option value="groq">Groq (langchain-groq)</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Speech language</label>
+            <select id="cfgLang">
+              <option value="en-IN">en-IN (Hindi accent)</option>
+              <option value="en-US">en-US</option>
+              <option value="en-GB">en-GB</option>
+              <option value="hi-IN">hi-IN</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: OVERVIEW
+    ══════════════════════════════════════ -->
+    <div id="sec-overview" class="section active">
+      <div class="topbar">
+        <div><h1>System overview</h1><p>Live status of all services in your local stack</p></div>
+        <button class="btn btn-primary" onclick="runAll()">▶ Run all checks</button>
+      </div>
+
+      <div class="status-grid">
+        <div class="stat-card">
+          <div class="stat-label">FastAPI</div>
+          <div class="stat-value" id="ov-api">—</div>
+          <div class="stat-sub" id="ov-api-sub">not checked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Redis</div>
+          <div class="stat-value" id="ov-redis">—</div>
+          <div class="stat-sub" id="ov-redis-sub">port 6379</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Supabase DB</div>
+          <div class="stat-value" id="ov-db">—</div>
+          <div class="stat-sub" id="ov-db-sub">not checked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">LLM</div>
+          <div class="stat-value" id="ov-llm">—</div>
+          <div class="stat-sub" id="ov-llm-sub">not checked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Mic / Speech</div>
+          <div class="stat-value" id="ov-mic">—</div>
+          <div class="stat-sub" id="ov-mic-sub">browser API</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Prometheus</div>
+          <div class="stat-value" id="ov-prom">—</div>
+          <div class="stat-sub">port 9090</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>🖥 Run log</h3>
+          <button class="btn btn-ghost" onclick="clearLog()">Clear</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="globalLog"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: HEALTH
+    ══════════════════════════════════════ -->
+    <div id="sec-health" class="section">
+      <div class="topbar">
+        <div><h1>Health checks</h1><p>Verifies your FastAPI /health, /docs, CORS, and service connectivity</p></div>
+        <button class="btn btn-primary" onclick="testHealth()">▶ Run health checks</button>
+      </div>
+
+      <div class="check-list" id="healthChecks">
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">GET /health — API alive</span><span class="check-detail" id="hc-health">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">GET /docs — Swagger UI accessible</span><span class="check-detail" id="hc-docs">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">CORS header present (Access-Control-Allow-Origin)</span><span class="check-detail" id="hc-cors">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">GET /metrics — Prometheus endpoint</span><span class="check-detail" id="hc-metrics">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Redis ping via backend /health</span><span class="check-detail" id="hc-redis-via">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Supabase connection via backend /health</span><span class="check-detail" id="hc-supabase-via">pending</span></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><h3>Raw /health response</h3></div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="healthRaw" style="max-height:180px"><div class="line dim">Run checks to see raw response…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: SPEECH
+    ══════════════════════════════════════ -->
+    <div id="sec-speech" class="section">
+      <div class="topbar">
+        <div><h1>Mic + Speech recognition</h1><p>Test microphone input and Web Speech API transcript quality</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>🎙 Microphone</h3>
+          <span id="micStatus" class="badge badge-yellow">● idle</span>
+        </div>
+        <div class="card-body">
+          <canvas id="waveCanvas"></canvas>
+          <div style="margin-top:12px" class="mic-row">
+            <div class="mic-orb" id="micOrb" onclick="toggleMic()">🎤</div>
+            <div>
+              <div class="mic-transcript" id="micTranscript">
+                <span class="placeholder">Click the mic to start. Speak and see live transcript here…</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                <span class="tag" id="confTag">confidence: —</span>
+                <span class="tag" id="wordsTag">words: 0</span>
+                <span class="tag" id="langTag">lang: en-IN</span>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-green" onclick="sendTranscriptToLLM()">→ Send transcript to LLM</button>
+            <button class="btn btn-ghost" onclick="clearMic()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>📋 Speech test cases</h3></div>
+        <div class="card-body">
+          <div style="display:grid;gap:6px">
+            <button class="btn btn-ghost" style="text-align:left;justify-content:flex-start" onclick="injectText('I have 3 years of experience with Python and FastAPI, and I have built multiple production-grade REST APIs.')">Inject: Python/API experience answer</button>
+            <button class="btn btn-ghost" style="text-align:left;justify-content:flex-start" onclick="injectText('For system design I would use a microservices architecture with Redis for caching and PostgreSQL for persistent storage.')">Inject: System design answer</button>
+            <button class="btn btn-ghost" style="text-align:left;justify-content:flex-start" onclick="injectText('I am comfortable with React hooks, context API, and have used LangChain to build LLM pipelines.')">Inject: Frontend + LLM answer</button>
+            <button class="btn btn-ghost" style="text-align:left;justify-content:flex-start" onclick="injectText('मेरे पास Python और FastAPI में अनुभव है और मैंने कई production applications बनाई हैं।')">Inject: Hindi text (test hi-IN)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: LLM PIPELINE
+    ══════════════════════════════════════ -->
+    <div id="sec-llm" class="section">
+      <div class="topbar">
+        <div><h1>LLM pipeline</h1><p>Test Gemini / Groq via your backend endpoints</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>💬 Send a message</h3>
+          <span class="badge badge-blue" id="llmProviderBadge">Gemini</span>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label>System prompt (interviewer persona)</label>
+            <textarea id="llmSysPrompt">You are a senior software engineer conducting a technical interview. Ask focused follow-up questions based on the candidate's answer. Be concise and professional.</textarea>
+          </div>
+          <div class="field">
+            <label>User message</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="llmInput" placeholder="Type a message or use mic transcript…" onkeydown="if(event.key==='Enter')callLLM()" style="flex:1" />
+              <button class="btn btn-primary" onclick="callLLM()">Send →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>🤖 Response</h3>
+          <span id="llmBadge" class="badge badge-yellow">idle</span>
+        </div>
+        <div class="card-body">
+          <div class="response-area" id="llmResponse">Response will appear here…</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px">
+            <div class="stat-card" style="padding:10px 14px">
+              <div class="stat-label">Latency</div>
+              <div class="stat-value" style="font-size:17px" id="llmLatency">—</div>
+            </div>
+            <div class="stat-card" style="padding:10px 14px">
+              <div class="stat-label">Est. tokens</div>
+              <div class="stat-value" style="font-size:17px" id="llmTokens">—</div>
+            </div>
+            <div class="stat-card" style="padding:10px 14px">
+              <div class="stat-label">Total calls</div>
+              <div class="stat-value" style="font-size:17px" id="llmCalls">0</div>
+            </div>
+            <div class="stat-card" style="padding:10px 14px">
+              <div class="stat-label">Status</div>
+              <div class="stat-value" style="font-size:17px" id="llmStatus2">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>📜 Conversation history</h3>
+          <button class="btn btn-ghost" onclick="clearHistory()">Clear history</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="historyLog" style="max-height:200px"><div class="line dim">No conversation yet…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: DATABASE
+    ══════════════════════════════════════ -->
+    <div id="sec-database" class="section">
+      <div class="topbar">
+        <div><h1>Database — Supabase / PostgreSQL</h1><p>Check if data is being written and read correctly</p></div>
+        <button class="btn btn-primary" onclick="testDatabase()">▶ Run DB tests</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('dbtab','sessions',this)">Sessions</div>
+        <div class="tab" onclick="switchTab('dbtab','responses',this)">LLM Responses</div>
+        <div class="tab" onclick="switchTab('dbtab','vectors',this)">Vector store</div>
+        <div class="tab" onclick="switchTab('dbtab','users',this)">Users</div>
+      </div>
+
+      <div class="tab-pane dbtab active" id="dbtab-sessions">
+        <div class="card">
+          <div class="card-head">
+            <h3>Interview sessions <span class="tag" id="sessCount">0 rows</span></h3>
+            <button class="btn btn-ghost" onclick="fetchTable('sessions')">↻ Refresh</button>
+          </div>
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <div id="tbl-sessions"><div class="db-empty">Click "Run DB tests" or "Refresh" to load data</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Create test session</h3></div>
+          <div class="card-body">
+            <div class="row2">
+              <div class="field">
+                <label>Candidate name</label>
+                <input type="text" id="dbCandName" value="Test Candidate" />
+              </div>
+              <div class="field">
+                <label>Role</label>
+                <input type="text" id="dbRole" value="Backend Engineer" />
+              </div>
+            </div>
+            <button class="btn btn-green" onclick="createSession()">+ Create session</button>
+            <span id="sessionResult" style="font-size:12px;color:var(--muted);margin-left:10px"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane dbtab" id="dbtab-responses">
+        <div class="card">
+          <div class="card-head">
+            <h3>LLM responses <span class="tag" id="respCount">0 rows</span></h3>
+            <button class="btn btn-ghost" onclick="fetchTable('responses')">↻ Refresh</button>
+          </div>
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <div id="tbl-responses"><div class="db-empty">Load data to see LLM response records</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane dbtab" id="dbtab-vectors">
+        <div class="card">
+          <div class="card-head">
+            <h3>pgvector — embeddings <span class="tag" id="vecCount">0 rows</span></h3>
+            <button class="btn btn-ghost" onclick="fetchTable('vectors')">↻ Refresh</button>
+          </div>
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <div id="tbl-vectors"><div class="db-empty">Load data to see vector embeddings</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Similarity search test</h3></div>
+          <div class="card-body">
+            <div class="field">
+              <label>Query text</label>
+              <input type="text" id="vecQuery" value="Tell me about your experience with databases" />
+            </div>
+            <button class="btn btn-primary" onclick="testVectorSearch()">Run similarity search</button>
+            <div class="terminal" id="vecResult" style="margin-top:12px;max-height:150px"><div class="line dim">Results will appear here…</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane dbtab" id="dbtab-users">
+        <div class="card">
+          <div class="card-head">
+            <h3>Users / profiles <span class="tag" id="userCount">0 rows</span></h3>
+            <button class="btn btn-ghost" onclick="fetchTable('users')">↻ Refresh</button>
+          </div>
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <div id="tbl-users"><div class="db-empty">Load data to see user records</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: REDIS
+    ══════════════════════════════════════ -->
+    <div id="sec-redis" class="section">
+      <div class="topbar">
+        <div><h1>Redis cache</h1><p>Test session caching and rate limiting via your backend</p></div>
+        <button class="btn btn-primary" onclick="testRedis()">▶ Run Redis tests</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Cache operations</h3></div>
+        <div class="card-body">
+          <div class="row2">
+            <div class="field">
+              <label>Key</label>
+              <input type="text" id="redisKey" value="test:session:001" />
+            </div>
+            <div class="field">
+              <label>Value</label>
+              <input type="text" id="redisVal" value='{"candidate":"Adarsh","status":"active"}' />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="redisSet()">SET key</button>
+            <button class="btn btn-ghost" onclick="redisGet()">GET key</button>
+            <button class="btn btn-ghost" onclick="redisDel()">DEL key</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Redis test results</h3></div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="redisLog"><div class="line dim">Redis results will appear here…</div></div>
+        </div>
+      </div>
+
+      <div class="check-list" style="margin-top:16px" id="redisChecks">
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Redis PING via backend</span><span class="check-detail" id="rc-ping">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">SET + GET roundtrip</span><span class="check-detail" id="rc-rtt">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Session data stored after LLM call</span><span class="check-detail" id="rc-session">pending</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: LANGGRAPH
+    ══════════════════════════════════════ -->
+    <div id="sec-langgraph" class="section">
+      <div class="topbar">
+        <div><h1>LangGraph agent</h1><p>Test multi-step interview agent flow</p></div>
+        <button class="btn btn-primary" onclick="testLanggraph()">▶ Run agent test</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Agent invocation</h3></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Input to agent</label>
+            <input type="text" id="lgInput" value="Start a technical interview for a Python backend developer role" />
+          </div>
+          <div class="field">
+            <label>Session ID</label>
+            <input type="text" id="lgSessionId" value="test-session-001" />
+          </div>
+          <button class="btn btn-primary" onclick="invokeAgent()">Invoke agent →</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Agent trace</h3>
+          <span id="lgBadge" class="badge badge-yellow">idle</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="lgTrace" style="max-height:300px"><div class="line dim">Agent trace will appear here…</div></div>
+        </div>
+      </div>
+
+      <div class="check-list" id="lgChecks">
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Agent endpoint responds</span><span class="check-detail" id="lgc-endpoint">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">Graph state transitions visible</span><span class="check-detail" id="lgc-state">pending</span></div>
+        <div class="check-item"><span class="check-icon">⬜</span><span class="check-label">DB write after agent step</span><span class="check-detail" id="lgc-db">pending</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SECTION: METRICS
+    ══════════════════════════════════════ -->
+    <div id="sec-metrics" class="section">
+      <div class="topbar">
+        <div><h1>Prometheus metrics</h1><p>Verify prometheus_fastapi_instrumentator is exposing data</p></div>
+        <button class="btn btn-primary" onclick="fetchMetrics()">↻ Fetch metrics</button>
+      </div>
+
+      <div class="status-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-label">Total requests</div><div class="stat-value" id="mReq">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg latency (s)</div><div class="stat-value" id="mLat">—</div></div>
+        <div class="stat-card"><div class="stat-label">5xx errors</div><div class="stat-value" id="m5xx">—</div></div>
+        <div class="stat-card"><div class="stat-label">Prometheus</div><div class="stat-value" id="mProm">—</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Raw /metrics output</h3></div>
+        <div class="card-body" style="padding:0">
+          <div class="terminal" id="metricsRaw" style="max-height:320px;font-size:11px"><div class="line dim">Click "Fetch metrics"…</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <p style="font-size:12px;color:var(--muted)">
+          Links: 
+          <a href="http://localhost:9090" target="_blank" style="color:var(--accent);text-decoration:none">Prometheus UI :9090</a> · 
+          <a href="http://localhost:3001" target="_blank" style="color:var(--accent);text-decoration:none">Grafana :3001</a> · 
+          <a href="http://localhost:8000/docs" target="_blank" style="color:var(--accent);text-decoration:none">Swagger Docs :8000/docs</a>
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+let audioCtx = null, analyser = null, micStream = null, animId = null;
+let llmCalls = 0;
+let convHistory = [];
+let lastTranscript = '';
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const api = () => $('cfgBackend').value.trim().replace(/\/$/, '');
+const ts = () => new Date().toLocaleTimeString('en-IN', {hour12:false});
+
+function log(msg, type='dim') {
+  const box = $('globalLog');
+  const d = document.createElement('div');
+  d.className = `line ${type}`;
+  d.innerHTML = `<span class="ts">[${ts()}]</span>${escHtml(msg)}`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function logTo(id, msg, type='dim') {
+  const box = $(id);
+  if(!box) return;
+  const d = document.createElement('div');
+  d.className = `line ${type}`;
+  d.innerHTML = `<span class="ts">[${ts()}]</span>${escHtml(msg)}`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setDot(id, state) {
+  const d = $('dot-' + id);
+  if(d) { d.className = 'nav-dot ' + state; }
+}
+
+function setCheck(id, icon, detail) {
+  const el = document.querySelector(`#hc-${id}`);
+  if(el) el.textContent = detail;
+}
+
+function setOv(key, val, sub, color) {
+  const el = $('ov-'+key);
+  if(el) { el.textContent = val; el.style.color = color; }
+  const s = $('ov-'+key+'-sub');
+  if(s && sub) s.textContent = sub;
+}
+
+// ── NAV ────────────────────────────────────────────────────────────────────
+function nav(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $('sec-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+function switchTab(group, id, el) {
+  document.querySelectorAll('.'+group).forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $(group+'-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── FETCH WRAPPER ──────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const url = api() + path;
+  const res = await fetch(url, {
+    ...opts,
+    signal: AbortSignal.timeout(15000),
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  return res;
+}
+
+// ══ HEALTH CHECKS ═══════════════════════════════════════════════════════════
+async function testHealth() {
+  setDot('health', 'run'); log('Running health checks…', 'info');
+  const raw = $('healthRaw'); raw.innerHTML = '';
+  const items = document.querySelectorAll('#healthChecks .check-item');
+
+  // /health
+  try {
+    const r = await apiFetch('/health');
+    const data = await r.json();
+    const txt = JSON.stringify(data, null, 2);
+    txt.split('\n').forEach(l => logTo('healthRaw', l, 'ok'));
+    markCheck(items[0], true, `${r.status} OK`); $('hc-health').textContent = `HTTP ${r.status}`;
+    log('/health → ' + r.status + ' OK', 'ok');
+
+    // parse sub-services from health response
+    const healthy = data.status === 'ok' || data.status === 'healthy' || r.ok;
+    setOv('api', r.ok ? '✓' : '✗', data.version || 'running', r.ok ? 'var(--green)' : 'var(--red)');
+
+    if(data.redis !== undefined) {
+      const rOk = data.redis === 'ok' || data.redis === true;
+      markCheck(items[4], rOk, rOk ? 'connected' : 'failed');
+      $('hc-redis-via').textContent = rOk ? 'connected' : 'failed'; 
+      setOv('redis', rOk ? '✓' : '✗', '', rOk ? 'var(--green)' : 'var(--red)');
+    }
+    if(data.database !== undefined || data.supabase !== undefined) {
+      const dOk = data.database === 'ok' || data.supabase === 'ok' || data.database === true;
+      markCheck(items[5], dOk, dOk ? 'connected' : 'failed');
+      $('hc-supabase-via').textContent = dOk ? 'connected' : 'failed';
+      setOv('db', dOk ? '✓' : '✗', '', dOk ? 'var(--green)' : 'var(--red)');
+    }
+  } catch(e) {
+    markCheck(items[0], false, e.message.substring(0,40));
+    $('hc-health').textContent = 'FAILED: ' + e.message.substring(0,30);
+    logTo('healthRaw', 'ERROR: ' + e.message, 'err');
+    setOv('api', '✗', 'not running', 'var(--red)');
+    log('/health FAILED: ' + e.message, 'err');
+  }
+
+  // /docs
+  try {
+    const r = await apiFetch('/docs');
+    markCheck(items[1], r.ok, `HTTP ${r.status}`); $('hc-docs').textContent = `HTTP ${r.status}`;
+  } catch(e) { markCheck(items[1], false, e.message.substring(0,40)); $('hc-docs').textContent = 'failed'; }
+
+  // CORS
+  try {
+    const r = await apiFetch('/health');
+    const cors = r.headers.get('access-control-allow-origin');
+    const ok = !!cors;
+    markCheck(items[2], ok, cors || 'header missing!'); $('hc-cors').textContent = cors || 'MISSING — add CORSMiddleware';
+    if(!ok) log('⚠ CORS header missing — add CORSMiddleware to FastAPI', 'warn');
+  } catch(e) { markCheck(items[2], false, e.message.substring(0,40)); }
+
+  // /metrics
+  try {
+    const r = await apiFetch('/metrics');
+    const ok = r.ok && r.headers.get('content-type')?.includes('text/plain');
+    markCheck(items[3], ok, ok ? 'prometheus format OK' : 'wrong format');
+    $('hc-metrics').textContent = ok ? 'OK' : `HTTP ${r.status}`;
+    setOv('prom', ok ? '✓' : '✗', '', ok ? 'var(--green)' : 'var(--red)');
+  } catch(e) { markCheck(items[3], false, e.message.substring(0,40)); $('hc-metrics').textContent = 'failed'; }
+
+  setDot('health', 'ok'); log('Health checks complete', 'ok');
+}
+
+function markCheck(el, ok, detail) {
+  if(!el) return;
+  const icon = el.querySelector('.check-icon');
+  if(icon) icon.textContent = ok ? '✅' : '❌';
+}
+
+// ══ MIC + SPEECH ════════════════════════════════════════════════════════════
+function initSpeech() {
+  if(!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+    log('Web Speech API NOT supported — use Chrome or Edge', 'err');
+    setOv('mic', '✗', 'use Chrome/Edge', 'var(--red)');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = $('cfgLang').value;
+
+  recognition.onstart = () => {
+    $('micOrb').classList.add('live');
+    $('micStatus').textContent = '● recording';
+    $('micStatus').className = 'badge badge-red';
+    log('Mic recording started (lang: ' + $('cfgLang').value + ')', 'ok');
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '', final = '';
+    for(let i = e.resultIndex; i < e.results.length; i++) {
+      if(e.results[i].isFinal) {
+        final += e.results[i][0].transcript;
+        const conf = Math.round(e.results[i][0].confidence * 100);
+        $('confTag').textContent = `confidence: ${conf}%`;
+      } else interim += e.results[i][0].transcript;
+    }
+    const text = (final || interim).trim();
+    if(text) {
+      lastTranscript = text;
+      $('micTranscript').innerHTML = escHtml(text);
+      $('wordsTag').textContent = 'words: ' + text.split(/\s+/).length;
+      $('langTag').textContent = 'lang: ' + $('cfgLang').value;
+      if(final) {
+        $('llmInput').value = text;
+        log('Final transcript: "' + text.substring(0,70) + (text.length>70?'…':'"'), 'teal');
+      }
+    }
+  };
+
+  recognition.onerror = (e) => {
+    log('Speech error: ' + e.error, 'err');
+    if(e.error === 'not-allowed') log('Mic permission denied. Check browser settings.', 'err');
+    stopMic();
+  };
+
+  recognition.onend = () => { if(isRecording) recognition.start(); };
+  log('Speech API initialized', 'ok');
+  setOv('mic', '✓', 'API ready', 'var(--green)');
+}
+
+async function toggleMic() {
+  if(!recognition) { initSpeech(); }
+  if(isRecording) { stopMic(); return; }
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    startWaveform(micStream);
+    recognition.lang = $('cfgLang').value;
+    recognition.start();
+    isRecording = true;
+  } catch(e) {
+    log('Mic permission denied: ' + e.message, 'err');
+  }
+}
+
+function stopMic() {
+  isRecording = false;
+  if(recognition) try { recognition.stop(); } catch(e){}
+  if(micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream = null; }
+  if(animId) { cancelAnimationFrame(animId); animId = null; }
+  $('micOrb').classList.remove('live');
+  $('micStatus').textContent = '● stopped';
+  $('micStatus').className = 'badge badge-yellow';
+  clearWaveform();
+}
+
+function clearMic() {
+  stopMic();
+  $('micTranscript').innerHTML = '<span class="placeholder">Click the mic to start. Speak and see live transcript here…</span>';
+  $('confTag').textContent = 'confidence: —';
+  $('wordsTag').textContent = 'words: 0';
+  lastTranscript = '';
+}
+
+function injectText(text) {
+  lastTranscript = text;
+  $('micTranscript').innerHTML = escHtml(text);
+  $('llmInput').value = text;
+  $('wordsTag').textContent = 'words: ' + text.split(/\s+/).length;
+  log('Injected test text', 'info');
+}
+
+function sendTranscriptToLLM() {
+  if(!lastTranscript) { log('No transcript to send', 'warn'); return; }
+  $('llmInput').value = lastTranscript;
+  nav('llm', document.querySelector('.nav-item:nth-child(5)'));
+  callLLM();
+}
+
+// ── WAVEFORM ───────────────────────────────────────────────────────────────
+function startWaveform(stream) {
+  audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  const src = audioCtx.createMediaStreamSource(stream);
+  src.connect(analyser);
+  const canvas = $('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  const data = new Uint8Array(analyser.frequencyBinCount);
+
+  function draw() {
+    animId = requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(data);
+    canvas.width = canvas.offsetWidth;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const bw = canvas.width / data.length * 2.5;
+    for(let i = 0; i < data.length; i++) {
+      const h = (data[i] / 255) * canvas.height;
+      const x = i * bw;
+      const alpha = 0.4 + (data[i]/255)*0.6;
+      ctx.fillStyle = `rgba(108,143,255,${alpha})`;
+      ctx.fillRect(x, canvas.height - h, bw - 1, h);
+    }
+  }
+  draw();
+}
+
+function clearWaveform() {
+  const canvas = $('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ══ LLM PIPELINE ════════════════════════════════════════════════════════════
+async function callLLM() {
+  const msg = $('llmInput').value.trim();
+  if(!msg) { log('No message to send', 'warn'); return; }
+
+  const provider = $('cfgProvider').value;
+  const sysPrompt = $('llmSysPrompt').value.trim();
+  $('llmBadge').textContent = 'calling…'; $('llmBadge').className = 'badge badge-yellow';
+  $('llmResponse').textContent = '⏳ Waiting for response…';
+  $('llmStatus2').textContent = '…';
+  const t0 = Date.now();
+  llmCalls++; $('llmCalls').textContent = llmCalls;
+
+  convHistory.push({role:'user', content: msg});
+  logHistory();
+
+  const endpoint = provider === 'gemini' ? '/api/llm/gemini' : '/api/llm/groq';
+  const body = { message: msg, system_prompt: sysPrompt, history: convHistory };
+
+  log(`Sending to ${provider}: "${msg.substring(0,50)}${msg.length>50?'…':''}"`, 'info');
+
+  try {
+    const r = await apiFetch(endpoint, { method:'POST', body: JSON.stringify(body) });
+
+    if(!r.ok) {
+      const errText = await r.text();
+      throw new Error(`HTTP ${r.status}: ${errText.substring(0,150)}`);
+    }
+
+    const data = await r.json();
+    const latency = Date.now() - t0;
+    const respText = data.response || data.message || data.content || data.answer || JSON.stringify(data);
+    const estTok = Math.round(respText.split(/\s+/).length * 1.3);
+
+    $('llmResponse').textContent = respText;
+    $('llmLatency').textContent = latency + 'ms';
+    $('llmTokens').textContent = '~' + estTok;
+    $('llmStatus2').textContent = '200';
+    $('llmBadge').textContent = '✓ ok'; $('llmBadge').className = 'badge badge-green';
+    setOv('llm', '✓', provider + ' ok', 'var(--green)');
+    setDot('llm', 'ok');
+    log(`LLM responded in ${latency}ms (~${estTok} tokens)`, 'ok');
+
+    convHistory.push({role:'assistant', content: respText});
+    $('llmInput').value = '';
+    logHistory();
+  } catch(e) {
+    const latency = Date.now() - t0;
+    $('llmResponse').textContent = '❌ ' + e.message;
+    $('llmLatency').textContent = latency + 'ms';
+    $('llmStatus2').textContent = 'ERR';
+    $('llmBadge').textContent = '✗ error'; $('llmBadge').className = 'badge badge-red';
+    setOv('llm', '✗', 'error', 'var(--red)'); setDot('llm', 'err');
+    log('LLM call failed: ' + e.message, 'err');
+    if(e.message.includes('Failed to fetch') || e.message.includes('ERR_CONNECTION')) {
+      log('↳ Backend not running? Run: uvicorn backend.main:app --reload', 'warn');
+    }
+    convHistory.pop();
+  }
+}
+
+function logHistory() {
+  const box = $('historyLog');
+  box.innerHTML = '';
+  if(convHistory.length === 0) { box.innerHTML = '<div class="line dim">No conversation yet…</div>'; return; }
+  convHistory.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'line ' + (m.role === 'user' ? 'teal' : 'ok');
+    d.innerHTML = `<span class="ts">[${m.role.toUpperCase()}]</span>${escHtml(m.content.substring(0,120))}${m.content.length>120?'…':''}`;
+    box.appendChild(d);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearHistory() {
+  convHistory = [];
+  logHistory();
+  log('Conversation history cleared', 'dim');
+}
+
+// ══ DATABASE ════════════════════════════════════════════════════════════════
+async function testDatabase() {
+  setDot('database', 'run');
+  log('Running database tests…', 'info');
+  await fetchTable('sessions');
+  await fetchTable('responses');
+  await fetchTable('vectors');
+  await fetchTable('users');
+  setDot('database', 'ok');
+  log('Database tests complete', 'ok');
+}
+
+async function fetchTable(table) {
+  const endpoints = {
+    sessions: '/api/sessions',
+    responses: '/api/responses',
+    vectors: '/api/embeddings',
+    users: '/api/users'
+  };
+  const countIds = { sessions: 'sessCount', responses: 'respCount', vectors: 'vecCount', users: 'userCount' };
+  const tblIds = { sessions: 'tbl-sessions', responses: 'tbl-responses', vectors: 'tbl-vectors', users: 'tbl-users' };
+
+  const ep = endpoints[table];
+  const tblEl = $(tblIds[table]);
+  tblEl.innerHTML = '<div class="db-empty">Loading…</div>';
+
+  try {
+    const r = await apiFetch(ep);
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const rows = Array.isArray(data) ? data : (data.data || data.items || data.results || []);
+    $(countIds[table]).textContent = rows.length + ' rows';
+
+    if(rows.length === 0) {
+      tblEl.innerHTML = '<div class="db-empty">No records found — table exists but is empty</div>';
+      log(`${table}: 0 rows (table OK, empty)`, 'warn');
+      return;
+    }
+
+    const cols = Object.keys(rows[0]);
+    let html = '<table class="db-table"><thead><tr>';
+    cols.forEach(c => html += `<th>${escHtml(c)}</th>`);
+    html += '</tr></thead><tbody>';
+    rows.slice(0, 20).forEach(row => {
+      html += '<tr>';
+      cols.forEach(c => {
+        const v = row[c];
+        const disp = v === null || v === undefined ? '<span class="null">null</span>' : escHtml(String(v).substring(0,60)) + (String(v).length > 60 ? '…' : '');
+        html += `<td>${disp}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    tblEl.innerHTML = html;
+    log(`${table}: ${rows.length} rows loaded`, 'ok');
+    setOv('db', '✓', 'data found', 'var(--green)'); setDot('database', 'ok');
+  } catch(e) {
+    tblEl.innerHTML = `<div class="db-empty">❌ ${escHtml(e.message)}</div>`;
+    log(`${table} fetch failed: ${e.message}`, 'err');
+    if(e.message.includes('404')) log('  ↳ Endpoint not found — does /api/'+table+' exist in your FastAPI app?', 'warn');
+  }
+}
+
+async function createSession() {
+  const name = $('dbCandName').value.trim();
+  const role = $('dbRole').value.trim();
+  $('sessionResult').textContent = 'Creating…';
+  log(`Creating session: ${name} / ${role}`, 'info');
+  try {
+    const r = await apiFetch('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ candidate_name: name, role: role, status: 'active' })
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status + ': ' + await r.text());
+    const data = await r.json();
+    $('sessionResult').textContent = '✓ Created: ID ' + (data.id || data.session_id || JSON.stringify(data));
+    $('sessionResult').style.color = 'var(--green)';
+    log('Session created: ' + JSON.stringify(data), 'ok');
+    setTimeout(() => fetchTable('sessions'), 500);
+  } catch(e) {
+    $('sessionResult').textContent = '✗ ' + e.message;
+    $('sessionResult').style.color = 'var(--red)';
+    log('Create session failed: ' + e.message, 'err');
+  }
+}
+
+async function testVectorSearch() {
+  const q = $('vecQuery').value.trim();
+  $('vecResult').innerHTML = '<div class="line dim">Searching…</div>';
+  log('Vector similarity search: "' + q + '"', 'info');
+  try {
+    const r = await apiFetch('/api/search', {
+      method: 'POST',
+      body: JSON.stringify({ query: q, top_k: 5 })
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    $('vecResult').innerHTML = '';
+    const results = data.results || data || [];
+    if(results.length === 0) {
+      logTo('vecResult', 'No results — vector store may be empty', 'warn');
+    } else {
+      results.forEach((r,i) => logTo('vecResult', `[${i+1}] score=${r.score?.toFixed(4)||'?'} | ${String(r.content||r.text||JSON.stringify(r)).substring(0,80)}`, 'ok'));
+      log('Vector search returned ' + results.length + ' results', 'ok');
+    }
+  } catch(e) {
+    logTo('vecResult', 'Error: ' + e.message, 'err');
+    log('Vector search failed: ' + e.message, 'err');
+  }
+}
+
+// ══ REDIS ════════════════════════════════════════════════════════════════════
+async function testRedis() {
+  setDot('redis', 'run');
+  log('Testing Redis…', 'info');
+
+  // ping
+  try {
+    const r = await apiFetch('/api/cache/ping');
+    const ok = r.ok;
+    markCheck(document.querySelectorAll('#redisChecks .check-item')[0], ok, ok ? 'PONG' : 'failed');
+    $('rc-ping').textContent = ok ? 'PONG' : 'failed';
+    logTo('redisLog', 'PING → ' + (ok ? 'PONG ✓' : 'FAILED ✗'), ok ? 'ok' : 'err');
+    setOv('redis', ok ? '✓' : '✗', ok ? 'connected' : 'unreachable', ok ? 'var(--green)' : 'var(--red)');
+  } catch(e) {
+    logTo('redisLog', 'PING error: ' + e.message, 'err');
+    $('rc-ping').textContent = 'error';
+    log('Redis PING failed: ' + e.message, 'err');
+  }
+
+  // roundtrip
+  const testKey = 'test:rtt:' + Date.now();
+  const testVal = 'intervue_rtt_test';
+  await redisOpTest(testKey, testVal);
+  setDot('redis', 'ok');
+}
+
+async function redisOpTest(key, val) {
+  try {
+    const t0 = Date.now();
+    const rSet = await apiFetch('/api/cache/set', {method:'POST', body: JSON.stringify({key, value: val, ttl: 60})});
+    const rGet = await apiFetch('/api/cache/get?key=' + encodeURIComponent(key));
+    const data = await rGet.json();
+    const ok = rGet.ok && (data.value === val || JSON.stringify(data).includes(val));
+    const rtt = Date.now() - t0;
+    markCheck(document.querySelectorAll('#redisChecks .check-item')[1], ok, ok ? `${rtt}ms` : 'mismatch');
+    $('rc-rtt').textContent = ok ? rtt + 'ms' : 'MISMATCH';
+    logTo('redisLog', `SET/GET roundtrip: ${ok ? '✓' : '✗'} (${rtt}ms)`, ok ? 'ok' : 'err');
+  } catch(e) {
+    $('rc-rtt').textContent = 'error';
+    logTo('redisLog', 'SET/GET error: ' + e.message, 'err');
+  }
+}
+
+async function redisSet() {
+  const key = $('redisKey').value.trim();
+  const val = $('redisVal').value.trim();
+  logTo('redisLog', 'SET ' + key + ' …', 'info');
+  try {
+    const r = await apiFetch('/api/cache/set', {method:'POST', body: JSON.stringify({key, value: val, ttl: 300})});
+    logTo('redisLog', r.ok ? '→ SET OK' : '→ SET failed: HTTP ' + r.status, r.ok ? 'ok' : 'err');
+  } catch(e) { logTo('redisLog', '→ Error: ' + e.message, 'err'); }
+}
+
+async function redisGet() {
+  const key = $('redisKey').value.trim();
+  logTo('redisLog', 'GET ' + key + ' …', 'info');
+  try {
+    const r = await apiFetch('/api/cache/get?key=' + encodeURIComponent(key));
+    const d = await r.json();
+    logTo('redisLog', '→ ' + JSON.stringify(d), r.ok ? 'teal' : 'err');
+  } catch(e) { logTo('redisLog', '→ Error: ' + e.message, 'err'); }
+}
+
+async function redisDel() {
+  const key = $('redisKey').value.trim();
+  logTo('redisLog', 'DEL ' + key + ' …', 'info');
+  try {
+    const r = await apiFetch('/api/cache/del?key=' + encodeURIComponent(key), {method:'DELETE'});
+    logTo('redisLog', r.ok ? '→ DEL OK' : '→ DEL failed', r.ok ? 'ok' : 'err');
+  } catch(e) { logTo('redisLog', '→ Error: ' + e.message, 'err'); }
+}
+
+// ══ LANGGRAPH ════════════════════════════════════════════════════════════════
+async function testLanggraph() {
+  setDot('langgraph', 'run');
+  log('Testing LangGraph agent…', 'info');
+  await invokeAgent();
+}
+
+async function invokeAgent() {
+  const input = $('lgInput').value.trim();
+  const sessionId = $('lgSessionId').value.trim();
+  $('lgBadge').textContent = 'running…'; $('lgBadge').className = 'badge badge-yellow';
+  $('lgTrace').innerHTML = '';
+  logTo('lgTrace', 'Invoking agent: "' + input + '"', 'info');
+
+  const endpoints = ['/api/agent/invoke', '/api/interview/start', '/api/interview', '/api/agent/run'];
+
+  for(const ep of endpoints) {
+    try {
+      const t0 = Date.now();
+      logTo('lgTrace', 'Trying endpoint: ' + ep, 'dim');
+      const r = await fetch(api() + ep, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({input, session_id: sessionId, message: input}),
+        signal: AbortSignal.timeout(20000)
+      });
+
+      if(r.status === 404) { logTo('lgTrace', ep + ' → 404 not found', 'warn'); continue; }
+
+      const data = await r.json();
+      const latency = Date.now() - t0;
+      logTo('lgTrace', `→ HTTP ${r.status} in ${latency}ms`, r.ok ? 'ok' : 'err');
+
+      if(data.steps || data.graph_state) {
+        logTo('lgTrace', 'Graph steps: ' + JSON.stringify(data.steps || data.graph_state).substring(0, 200), 'teal');
+        markCheck(document.querySelectorAll('#lgChecks .check-item')[1], true, 'state visible');
+        $('lgc-state').textContent = 'visible';
+      }
+
+      if(r.ok) {
+        logTo('lgTrace', 'Response: ' + JSON.stringify(data).substring(0, 300), 'ok');
+        $('lgBadge').textContent = '✓ ok'; $('lgBadge').className = 'badge badge-green';
+        markCheck(document.querySelectorAll('#lgChecks .check-item')[0], true, ep);
+        $('lgc-endpoint').textContent = ep;
+        setDot('langgraph', 'ok');
+        log('LangGraph agent responded via ' + ep, 'ok');
+        return;
+      }
+    } catch(e) {
+      logTo('lgTrace', ep + ' → ' + e.message, 'err');
+    }
+  }
+
+  $('lgBadge').textContent = '✗ no endpoint'; $('lgBadge').className = 'badge badge-red';
+  markCheck(document.querySelectorAll('#lgChecks .check-item')[0], false, 'no valid endpoint');
+  logTo('lgTrace', '↳ None of the agent endpoints responded. Check your router in backend/main.py', 'warn');
+  setDot('langgraph', 'err');
+  log('LangGraph agent test failed — no valid endpoint', 'err');
+}
+
+// ══ METRICS ═════════════════════════════════════════════════════════════════
+async function fetchMetrics() {
+  $('metricsRaw').innerHTML = '<div class="line dim">Fetching…</div>';
+  log('Fetching Prometheus metrics…', 'info');
+  try {
+    const r = await apiFetch('/metrics');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    $('metricsRaw').innerHTML = '';
+    const lines = text.split('\n').slice(0, 80);
+    lines.forEach(line => {
+      const d = document.createElement('div');
+      d.className = 'line ' + (line.startsWith('#') ? 'dim' : 'ok');
+      d.textContent = line;
+      $('metricsRaw').appendChild(d);
+    });
+
+    // parse a few key values
+    const reqMatch = text.match(/http_requests_total[^}]*}\s+([\d.]+)/);
+    const latMatch = text.match(/http_request_duration_seconds_sum[^}]*}\s+([\d.]+)/);
+    const countMatch = text.match(/http_request_duration_seconds_count[^}]*}\s+([\d.]+)/);
+    const errMatch = text.match(/http_requests_total\{[^}]*status="5/);
+
+    if(reqMatch) $('mReq').textContent = Math.round(parseFloat(reqMatch[1]));
+    if(latMatch && countMatch && parseFloat(countMatch[1]) > 0) {
+      $('mLat').textContent = (parseFloat(latMatch[1]) / parseFloat(countMatch[1])).toFixed(3);
+    }
+    $('m5xx').textContent = errMatch ? '≥1' : '0';
+    $('mProm').textContent = '✓';
+    $('mProm').style.color = 'var(--green)';
+    setOv('prom', '✓', 'metrics ok', 'var(--green)'); setDot('metrics', 'ok');
+    log('/metrics: ' + lines.length + ' lines', 'ok');
+  } catch(e) {
+    logTo('metricsRaw', 'Error: ' + e.message, 'err');
+    $('mProm').textContent = '✗'; $('mProm').style.color = 'var(--red)';
+    setDot('metrics', 'err');
+    log('Metrics fetch failed: ' + e.message, 'err');
+  }
+}
+
+// ══ RUN ALL ══════════════════════════════════════════════════════════════════
+async function runAll() {
+  log('══ Starting full test suite ══', 'info');
+  $('globalLog').innerHTML = '';
+  log('══ Starting full test suite ══', 'info');
+  setDot('overview', 'run');
+
+  // Browser speech check
+  if('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+    setOv('mic', '✓', 'API ready', 'var(--green)'); setDot('speech', 'ok');
+    log('Web Speech API: available', 'ok');
+  } else {
+    setOv('mic', '✗', 'use Chrome/Edge', 'var(--red)'); setDot('speech', 'err');
+    log('Web Speech API: NOT available (use Chrome/Edge)', 'err');
+  }
+
+  await testHealth();
+  await fetchMetrics();
+  log('══ Full test suite complete ══', 'teal');
+  setDot('overview', 'ok');
+}
+
+// ══ UTILS ════════════════════════════════════════════════════════════════════
+function clearLog() { $('globalLog').innerHTML = ''; }
+
+function exportLog() {
+  const lines = Array.from($('globalLog').querySelectorAll('.line')).map(l => l.textContent);
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'intervue-test-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  initSpeech();
+  log('Test lab loaded. Backend: ' + api(), 'teal');
+  log('Stack: FastAPI + Supabase/pgvector + Redis + LangGraph + Gemini/Groq', 'dim');
+  log('Click "Run all checks" to test everything at once.', 'dim');
+  $('cfgProvider').addEventListener('change', () => {
+    $('llmProviderBadge').textContent = $('cfgProvider').value === 'gemini' ? 'Gemini' : 'Groq';
+  });
+});
+</script>
+</body>
+</html>

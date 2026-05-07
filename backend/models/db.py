@@ -2,7 +2,7 @@ import os,uuid
 from supabase import create_client
 from datetime import datetime
 
-supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_SERVICE_KEY'))
+supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_KEY'))
 
 
 

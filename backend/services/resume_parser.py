@@ -46,7 +46,7 @@ Resume text:
 Return ONLY the JSON object. No markdown, no explanation.
 '''
 
-async def extract_text_from_file(file_bytes:bytes,filename:str)->str:
+async def extract_text(file_bytes: bytes, filename: str) -> str:
     """
     Extract raw text from PDF, Docx or plain text files
     """

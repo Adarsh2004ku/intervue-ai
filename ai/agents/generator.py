@@ -1,5 +1,6 @@
 from ai.personas.interviewer_personas import PERSONAS
 from backend.services.llm_client import llm_json
+from ai.agents.state import InterviewState
 
 async def question_generator(state : InterviewState) -> InterviewState:
     idx = state['current_index']

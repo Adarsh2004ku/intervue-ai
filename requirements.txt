@@ -23,7 +23,11 @@ pydantic
 numpy
 
 
-
+openai-whisper
+librosa
+soundfile
+numpy
+ffmpeg-python
 
 
 aiofiles

@@ -1,4 +1,5 @@
 from backend.services.embedder import retrieve_chunks
+from ai.agents.state import InterviewState
 
 async def retriever_agent(state: InterviewState) -> InterviewState:
     idx  = state['current_index']

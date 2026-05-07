@@ -1,5 +1,7 @@
 from backend.models.db import fetch_topic_profiles
 from backend.services.llm_client import llm_json
+from ai.agents.state import InterviewState
+
 
 async def planner_agent(State : InterviewState) -> InterviewState:
 

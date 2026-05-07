@@ -1,4 +1,5 @@
 from backend.services.llm_client import llm_json
+from ai.agents.state import InterviewState
 
 async def evaluator_agent(state : InterviewState) -> InterviewState:
     q = state['questions'][-1]
