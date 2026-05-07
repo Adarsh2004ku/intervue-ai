@@ -1,13 +1,7 @@
 services:
-
   api:
-
     build: .
-
     container_name: intervue-api
-
-    restart: unless-stopped
-
     ports:
       - "8000:8000"
 
@@ -23,30 +17,50 @@ services:
     volumes:
       - .:/app
 
-    command: >
-      uvicorn backend.main:app
-      --host 0.0.0.0
-      --port 8000
-      --reload
-
-
-  redis:
-
-    image: redis:7-alpine
-
-    container_name: intervue-redis
-
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: intervue-redis
+
     ports:
-      - "6380:6379"
+      - "6379:6379"
+
+    command: redis-server --appendonly yes
 
     volumes:
       - redis_data:/data
 
-    command: redis-server --appendonly yes
+    restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: intervue-prometheus
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: intervue-grafana
+
+    ports:
+      - "3001:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+    restart: unless-stopped
 
 volumes:
-
   redis_data:
+  grafana_data:
