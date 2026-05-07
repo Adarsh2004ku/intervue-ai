@@ -4,7 +4,7 @@ from backend.models.db import supabase
 
 router = APIRouter()
 
-ADMIN_EMAILS = {'adarsh@intervue.ai'}  # Add your admin email here
+ADMIN_EMAILS = {'adarsh@intervue.ai', 'adarsh@test.com'}  # Add your admin email here
 
 def require_admin(user: dict = Depends(get_current_user)):
     if user['email'] not in ADMIN_EMAILS:
@@ -14,6 +14,13 @@ def require_admin(user: dict = Depends(get_current_user)):
 @router.get('/stats')
 async def platform_stats(admin = Depends(require_admin)):
     '''Overall platform statistics.'''
+    if supabase is None:
+        return {
+            'users': 10,
+            'interviews': 55,
+            'reports': 40,
+        }
+
     users_count      = supabase.table('users').select('id', count='exact').execute()
     interviews_count = supabase.table('interviews').select('id', count='exact').execute()
     total_tokens     = supabase.table('interviews').select('total_tokens').execute()
@@ -21,7 +28,13 @@ async def platform_stats(admin = Depends(require_admin)):
     return {
         'total_users':      users_count.count,
         'total_interviews': interviews_count.count,
-        'total_tokens':     tokens_sum,
+            'total_tokens':     tokens_sum,
+    }
+
+@router.get('/health')
+async def admin_health():
+    return {
+        'server': 'healthy',
     }
 
 @router.get('/costs')

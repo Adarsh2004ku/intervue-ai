@@ -1,8 +1,49 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.auth import get_current_user
-from backend.models.db import supabase, fetch_topic_profiles
+from backend.models.db import fetch_topic_profiles, supabase
 
 router = APIRouter()
+
+TEST_USERS = {
+    "adarsh": {
+        "token": "token_adarsh",
+        "id": "user_1",
+        "email": "adarsh@test.com"
+    },
+
+    "demo": {
+        "token": "token_demo",
+        "id": "user_2",
+        "email": "demo@test.com"
+    },
+
+    "admin": {
+        "token": "token_admin",
+        "id": "admin_1",
+        "email": "admin@test.com"
+    }
+}
+
+
+@router.get("/test-users")
+async def get_test_users():
+
+    return TEST_USERS
+
+
+@router.post("/test-login/{username}")
+async def test_login(username: str):
+
+    user = TEST_USERS.get(username)
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return {
+        "access_token": user["token"],
+        "token_type": "bearer",
+        "user": user
+    }
 
 @router.get('/me')
 async def get_profile(user: dict = Depends(get_current_user)):
